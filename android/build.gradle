@@ -1,0 +1,55 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle')
+    classpath('com.facebook.react:react-native-gradle-plugin')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"
+
+// Jaring pengaman versi react-android/hermes-android.
+// Normalnya @react-native/gradle-plugin menyuntikkan paksa (force) versi ini
+// dari node_modules/react-native/ReactAndroid/gradle.properties
+// (VERSION_NAME=0.86.3) dan sdks/hermes-engine/version.properties
+// (HERMES_V1_VERSION_NAME=250829098.0.17), sekaligus mengganti koordinat lama
+// com.facebook.react:hermes-android -> com.facebook.hermes:hermes-android.
+// Kalau suntikan itu tidak terjadi (instalasi node_modules tidak utuh /
+// urutan evaluasi Gradle), dependensi tanpa versi yang ditulis modul Expo &
+// worklets gagal resolve ("Could not find com.facebook.react:react-android:.")
+// atau prefab-nya kosong ("Could not find ... hermes-engine" dari CMake).
+// Blok ini meniru persis yang dilakukan RNGP untuk react-native 0.86.3.
+// WAJIB diselaraskan kalau versi react-native di package.json berubah.
+allprojects {
+  configurations.configureEach {
+    resolutionStrategy {
+      force "com.facebook.react:react-android:0.86.3"
+      force "com.facebook.hermes:hermes-android:250829098.0.17"
+      dependencySubstitution {
+        substitute(module("com.facebook.react:react-native"))
+          .using(module("com.facebook.react:react-android:0.86.3"))
+        substitute(module("com.facebook.react:hermes-android"))
+          .using(module("com.facebook.hermes:hermes-android:250829098.0.17"))
+        substitute(module("com.facebook.react:hermes-engine"))
+          .using(module("com.facebook.hermes:hermes-android:250829098.0.17"))
+      }
+    }
+  }
+}
+
+
