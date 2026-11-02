@@ -16,7 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import pkg from "../../package.json";
@@ -38,6 +38,8 @@ import {
   type AppearanceState,
 } from "../features/settings/model";
 import { t, setLang, getLang, type Lang } from "../i18n";
+import { getServerAddress, setServerAddress, testServerAddress } from "../api/serverAddress";
+import { type Theme } from "../theme/tokens";
 import { deviceProbe } from "../sync/probe";
 import { apiTransport } from "../sync/apiTransport";
 import { SyncService } from "../sync/syncService";
@@ -343,6 +345,9 @@ export default function SettingsScreen() {
           </>
         ) : null}
 
+        <SectionHeader theme={theme} title={t("mobile_server_section")} />
+        <ServerCard theme={theme} />
+
         <SectionHeader theme={theme} title={labels.account ?? t("mobile_settings_account")} />
         <Card theme={theme} style={styles.columnCard}>
           <KeyValueRow theme={theme} label={t("profile_display_name")} value={displayName || "—"} />
@@ -373,7 +378,74 @@ export default function SettingsScreen() {
   );
 }
 
+/**
+ * M14 produk — alamat server bisa diubah dari aplikasi ("satu APK untuk
+ * semua orang"). Tersimpan lokal di SecureStore, bukan di server (jelas
+ * tidak mungkin: server-nya sendiri yang sedang dituju).
+ */
+function ServerCard({ theme }: { theme: Theme }) {
+  const [value, setValue] = useState(getServerAddress());
+  const [status, setStatus] = useState<"idle" | "testing" | "ok" | "fail" | "saved" | "invalid">("idle");
+  return (
+    <Card theme={theme} style={styles.columnCard}>
+      <Text style={[styles.meta, { color: theme.colors.muted }]}>{t("mobile_server_hint")}</Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            color: theme.colors.text,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.bg2,
+          },
+        ]}
+        value={value}
+        onChangeText={setValue}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        placeholder="http://192.168.1.20:8765"
+        accessibilityLabel={t("mobile_server_section")}
+      />
+      <Button
+        theme={theme}
+        label={t("mobile_server_test")}
+        onPress={() => {
+          setStatus("testing");
+          void testServerAddress(value).then((ok) => setStatus(ok ? "ok" : "fail"));
+        }}
+        disabled={status === "testing"}
+      />
+      <Button
+        theme={theme}
+        label={t("btn_save")}
+        onPress={() => {
+          void setServerAddress(value).then((ok) => setStatus(ok ? "saved" : "invalid"));
+        }}
+      />
+      {status !== "idle" && status !== "testing" ? (
+        <Text style={[styles.meta, { color: theme.colors.muted }]}>
+          {status === "ok"
+            ? t("mobile_server_test_ok")
+            : status === "fail"
+              ? t("mobile_server_test_fail")
+              : status === "saved"
+                ? t("mobile_server_saved")
+                : t("mobile_server_invalid")}
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  input: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
   columnCard: { alignItems: "stretch", flexDirection: "column", gap: 10, minHeight: 0 },
   fieldLabel: { fontSize: 12, fontWeight: "700" },
   line: { fontSize: 15, fontWeight: "700" },

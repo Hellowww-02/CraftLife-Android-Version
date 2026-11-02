@@ -14,6 +14,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "./ui/primitives";
 import { MIN_TOUCH_TARGET_DP, scale, type Theme } from "../theme/tokens";
+import { getServerAddress } from "../api/serverAddress";
+import { t } from "../i18n";
 
 export interface StateProps {
   theme: Theme;
@@ -78,6 +80,11 @@ export function ErrorState({ theme, title, message, onRetry, retryLabel }: Error
       {message ? (
         <Text style={[styles.message, { color: theme.colors.muted }]}>{message}</Text>
       ) : null}
+      {/* M14 produk: error jaringan tanpa alamat = buntu. Selalu tampilkan
+          ke mana aplikasi mencoba menyambung + cara mengubahnya. */}
+      <Text style={[styles.hint, { color: theme.colors.muted }]}>
+        {t("mobile_server_current", { url: getServerAddress() })}
+      </Text>
       <View
         accessibilityRole="button"
         accessible
@@ -105,6 +112,11 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "center",
     padding: 24,
+  },
+  hint: {
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 4,
   },
   title: {
     fontSize: 16,

@@ -17,6 +17,7 @@
 import { setApiPlatformAdapter } from "@craftlife/core";
 
 import { getAccessToken } from "../auth/session";
+import { getServerAddress, initServerAddress } from "./serverAddress";
 
 let configured = false;
 
@@ -29,8 +30,11 @@ let configured = false;
 export function configureApiAdapter(apiBaseUrl: string): void {
   if (configured) return;
   const base = apiBaseUrl.replace(/\/$/, "");
+  // M14 produk: alamat dibaca PER PERMINTAAN dari serverAddress (bisa diubah
+  // penguna di Settings), dengan `base` sebagai bawaan build.
+  initServerAddress(base);
   setApiPlatformAdapter({
-    apiBase: () => base,
+    apiBase: () => getServerAddress(),
     // Dibaca saat pemanggilan, bukan di sini: token diperbarui setelah refresh,
     // dan adapter harus selalu mengembalikan nilai terkini.
     authToken: () => getAccessToken(),
