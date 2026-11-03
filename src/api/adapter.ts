@@ -17,6 +17,8 @@
 import { setApiPlatformAdapter } from "@craftlife/core";
 
 import { getAccessToken } from "../auth/session";
+import { installCloudFetchShim } from "../cloud/backend";
+import { getDataMode, loadDataMode } from "../cloud/mode";
 import { getServerAddress, initServerAddress } from "./serverAddress";
 
 let configured = false;
@@ -33,8 +35,11 @@ export function configureApiAdapter(apiBaseUrl: string): void {
   // M14 produk: alamat dibaca PER PERMINTAAN dari serverAddress (bisa diubah
   // penguna di Settings), dengan `base` sebagai bawaan build.
   initServerAddress(base);
+  // M15: shim menangkap URL cloud://api dan meneruskannya ke router Supabase.
+  installCloudFetchShim();
+  void loadDataMode();
   setApiPlatformAdapter({
-    apiBase: () => getServerAddress(),
+    apiBase: () => (getDataMode() === "cloud" ? "cloud://api" : getServerAddress()),
     // Dibaca saat pemanggilan, bukan di sini: token diperbarui setelah refresh,
     // dan adapter harus selalu mengembalikan nilai terkini.
     authToken: () => getAccessToken(),

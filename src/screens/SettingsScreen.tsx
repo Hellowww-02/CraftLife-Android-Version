@@ -39,6 +39,8 @@ import {
 } from "../features/settings/model";
 import { t, setLang, getLang, type Lang } from "../i18n";
 import { getServerAddress, setServerAddress, testServerAddress } from "../api/serverAddress";
+import { cloudConfig, hasCloudSession, signIn, signUp, signOut } from "../cloud/supabase";
+import { getDataMode, setDataMode, type DataMode } from "../cloud/mode";
 import { type Theme } from "../theme/tokens";
 import { deviceProbe } from "../sync/probe";
 import { apiTransport } from "../sync/apiTransport";
@@ -386,6 +388,10 @@ export default function SettingsScreen() {
 function ServerCard({ theme }: { theme: Theme }) {
   const [value, setValue] = useState(getServerAddress());
   const [status, setStatus] = useState<"idle" | "testing" | "ok" | "fail" | "saved" | "invalid">("idle");
+  const [mode, setMode] = useState<DataMode>(getDataMode());
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [cloudStatus, setCloudStatus] = useState<"idle" | "busy" | "ok" | "fail">("idle");
   return (
     <Card theme={theme} style={styles.columnCard}>
       <Text style={[styles.meta, { color: theme.colors.muted }]}>{t("mobile_server_hint")}</Text>
@@ -432,6 +438,81 @@ function ServerCard({ theme }: { theme: Theme }) {
                 ? t("mobile_server_saved")
                 : t("mobile_server_invalid")}
         </Text>
+      ) : null}
+
+      {/* M15 — sumber data: cloud (HP berdiri sendiri) vs desktop (PC). */}
+      <Text style={[styles.fieldLabel, { color: theme.colors.muted }]}>
+        {t("mobile_datasource_title")}
+      </Text>
+      <Text style={[styles.meta, { color: theme.colors.muted }]}>{t("mobile_datasource_hint")}</Text>
+      <ChipRow>
+        <Chip
+          theme={theme}
+          label={t("mobile_datasource_cloud")}
+          selected={mode === "cloud"}
+          onPress={() => {
+            void setDataMode("cloud").then(() => setMode("cloud"));
+          }}
+        />
+        <Chip
+          theme={theme}
+          label={t("mobile_datasource_desktop")}
+          selected={mode === "desktop"}
+          onPress={() => {
+            void setDataMode("desktop").then(() => setMode("desktop"));
+          }}
+        />
+      </ChipRow>
+      {mode === "cloud" ? (
+        cloudConfig() === null ? (
+          <InlineNote theme={theme}>{t("mobile_cloud_pending_error")}</InlineNote>
+        ) : hasCloudSession() ? (
+          <Button theme={theme} label={t("cloud_sign_out")} onPress={() => { signOut(); setCloudStatus("idle"); }} />
+        ) : (
+          <>
+            <TextInput
+              style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.bg2 }]}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholder="email"
+              accessibilityLabel={t("cloud_email")}
+            />
+            <TextInput
+              style={[styles.input, { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.bg2 }]}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="••••••••"
+              accessibilityLabel={t("cloud_password")}
+            />
+            <Button
+              theme={theme}
+              label={t("mobile_cloud_login")}
+              disabled={cloudStatus === "busy"}
+              onPress={() => {
+                setCloudStatus("busy");
+                void signIn(email, password).then((ok) => setCloudStatus(ok ? "ok" : "fail"));
+              }}
+            />
+            <Button
+              theme={theme}
+              variant="ghost"
+              label={t("mobile_cloud_register")}
+              disabled={cloudStatus === "busy"}
+              onPress={() => {
+                setCloudStatus("busy");
+                void signUp(email, password).then((ok) => setCloudStatus(ok ? "ok" : "fail"));
+              }}
+            />
+            {cloudStatus === "ok" ? (
+              <Text style={[styles.meta, { color: theme.colors.muted }]}>{t("mobile_cloud_login_ok")}</Text>
+            ) : cloudStatus === "fail" ? (
+              <Text style={[styles.meta, { color: theme.colors.muted }]}>{t("mobile_cloud_login_fail")}</Text>
+            ) : null}
+          </>
+        )
       ) : null}
     </Card>
   );
