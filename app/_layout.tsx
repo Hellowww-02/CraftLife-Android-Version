@@ -2,6 +2,7 @@
 
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import React from "react";
 
 import { configureApiAdapter } from "../src/api/adapter";
@@ -45,8 +46,10 @@ function ThemedStack() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <ThemedStack />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <ThemedStack />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
