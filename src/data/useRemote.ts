@@ -28,6 +28,31 @@ import { loadRemote } from "./taskActions";
 
 const lastGood = new Map<string, unknown>();
 
+/** Jaring pengaman: setiap langkah wajib selesai dalam batas waktu. Fetch sudah
+ *  punya timeout sendiri, tapi langkah lain (SQLite/SecureStore) ikut dijaga
+ *  supaya layar TIDAK PERNAH loading selamanya — error yang jelas + tombol coba
+ *  lagi lebih baik daripada kail yang menggantung. */
+const STEP_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`timeout_${label}`)),
+      STEP_TIMEOUT_MS,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 /** Hanya untuk tes: buang ingatan data terakhir. */
 export function __clearLastGoodForTests(): void {
   lastGood.clear();
@@ -72,10 +97,16 @@ export function useRemote<T>(
       if (mode === "initial") setLoading(true);
       if (mode === "pull") setRefreshing(true);
       try {
-        const userId = await resolveLocalUserId(undefined, loadPersistedUser);
-        const store = await getAppData(userId);
-        await store.clock.refresh();
-        const result = await loadRemote<unknown>(store.api, path);
+        const userId = await withTimeout(
+          resolveLocalUserId(undefined, loadPersistedUser),
+          "session",
+        );
+        const store = await withTimeout(getAppData(userId), "db");
+        await withTimeout(store.clock.refresh(), "clock");
+        const result = await withTimeout(
+          loadRemote<unknown>(store.api, path),
+          "data",
+        );
         if (!mounted.current) return;
         setApp(store);
         setDateKey(store.clock.dateKey());
